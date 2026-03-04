@@ -168,11 +168,19 @@ def parity_fixture():
     ref_audio = "ref_audio.wav"
     text = "Short parity test."
 
+    # Both base and fast must use the same attn_implementation so that parity tests
+    # (which compare fast_generate(parity_mode=True) against base.model.generate())
+    # remain valid.  sdpa is required for bfloat16 CUDA-graph correctness: with
+    # StaticCache padded to max_seq_len the eager BF16 GEMM kernel accumulates
+    # differently for different K-sequence lengths (2048 vs the actual prefill length),
+    # causing hidden-state divergence that grows step-by-step.  sdpa's tiled kernel
+    # skips fully-masked K blocks, giving identical results to DynamicCache regardless
+    # of StaticCache padding length.
     base = Qwen3TTSModel.from_pretrained(
-        MODEL_ID, device_map=device, dtype=dtype, attn_implementation="eager"
+        MODEL_ID, device_map=device, dtype=dtype, attn_implementation="sdpa"
     )
     fast = FasterQwen3TTS.from_pretrained(
-        MODEL_ID, device=device, dtype=dtype, attn_implementation="eager"
+        MODEL_ID, device=device, dtype=dtype, attn_implementation="sdpa"
     )
 
     prompt_items = base.create_voice_clone_prompt(ref_audio=ref_audio, ref_text="", x_vector_only_mode=True)
