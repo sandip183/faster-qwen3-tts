@@ -1,0 +1,36 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Cog build configuration for faster-qwen3-tts on Replicate
+# https://github.com/replicate/cog
+#
+# Build requirements:
+#   • NVIDIA GPU with CUDA 12.1 support (A40, A100, L4, T4, H100 …)
+#   • Python 3.11
+#   • PyTorch 2.5.1 (minimum for reliable CUDA-graph capture)
+# ─────────────────────────────────────────────────────────────────────────────
+
+build:
+  # ── Hardware ────────────────────────────────────────────────────────────────
+  gpu: true
+  cuda: "12.1"
+
+  # ── Runtime ─────────────────────────────────────────────────────────────────
+  python_version: "3.11"
+
+  # ── System packages ─────────────────────────────────────────────────────────
+  system_packages:
+    - "libsndfile1"
+    - "ffmpeg"
+
+  # ── Python packages  ────────────────────────────────────────────────────────
+  # Install PyTorch first via run commands so we can point at the correct wheel
+  # index before letting pip resolve the remaining dependencies.
+  run:
+    # PyTorch 2.5.1 built for CUDA 12.1
+    - "pip install --no-cache-dir torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121"
+    # faster-qwen3-tts and its remaining Python dependencies
+    - "pip install --no-cache-dir 'faster-qwen3-tts>=0.2.5'"
+    # Cog's own runtime dependency
+    - "pip install --no-cache-dir cog"
+
+# ── Prediction entrypoint ─────────────────────────────────────────────────────
+predict: "predict.py:Predictor"
